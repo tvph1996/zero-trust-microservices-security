@@ -2,7 +2,8 @@
 
 This project implements a secure, observable microservices architecture using **Zero-Trust** principles. It demonstrates a complete pipeline for securing service-to-service communication, identity management, and distributed monitoring.
 
-<img width="788" height="570" alt="image" src="https://github.com/user-attachments/assets/533f87d4-8777-4585-8bc9-8764589da23e" />
+
+<img width="788" height="570" alt="hung" src="https://github.com/user-attachments/assets/fb02e41c-6292-4a04-b509-eadf432c3e11" />
 
 <img width="1280" height="640" alt="image" src="https://github.com/user-attachments/assets/3a8b8e7a-6884-4704-b1fa-52ce5f157938" />
 
