@@ -1,100 +1,67 @@
-# **GOALS**
+# Zero-Trust Microservices Security & Observability
 
-- Implement Traefik gateway as a single, secure entry point to force using of HTTPS for communication from the outside.
-- Authentication and authorization are handled by Keycloak as an OAuth 2.0/OIDC provider, requiring valid JWT bearer tokens.
-- A zero-trust internal network is created by updating to mutual TLS, forcing services to verify each other's identity.
+This project implements a secure, observable microservices architecture using **Zero-Trust** principles. It demonstrates a complete pipeline for securing service-to-service communication, identity management, and distributed monitoring.
 
-&nbsp;
+## Technical Overview
+The system consists of a FastAPI REST gateway, a gRPC backend service, and a MongoDB database. Every connection is secured, and every request is traced across the stack.
 
-# **SYSTEM SETUP**
+### Security Implementation
+- **Ingress Protection**: Traefik acts as the entry point, handling HTTPS termination and masking internal service topology. Only the REST API is exposed to the outside world.
+- **Identity & Access Management**: Keycloak serves as the OIDC provider. The REST service validates JWT bearer tokens for all incoming requests, ensuring only authenticated users can interact with the system.
+- **Mutual TLS (mTLS)**: Zero-trust is enforced at the network level. All internal communication between the REST and gRPC services is encrypted and verified using a custom Certificate Authority (CA), requiring services to prove their identity to each other.
+- **Service Isolation**: Services are non-exposed by default. Traffic is only routed via Traefik through explicit Docker labels.
 
-- Two new blocks added to the existing stack: Traefik & Keycloak
-- Traefik acts as the gateway, managing all incoming HTTPS traffic and routing it to the internal services while hiding the rest of the system.
-- Keycloak handles user login and gives temporary access tokens (JWTs) for authentication and authorization.
-- Used in the lab is an own self-signed CA, which acts as the root of trust for other services, including a root private key (ca.key) for signing other certificates and a public certificate (ca.crt) for verification.
-- Similarly, both rest-service and grpc-service also has their respective private key and public certificate.
-- In additional, another pair of private key and public certificate is created for localhost, differs from using rest-service certificate as the lab guideline. This is to avoid making rest-service identity visible to the outside, in case the attacker steal localhost, he can’t call grpc-service -> MongoDB directly. Not only that, a separate hostname of a certificate is still better.
-- mTLS is setup between rest-service and grpc-service. Both must prove their identity to each other before any communication is allowed, achieving a zero-trust security posture.
+### Observability & Resilience
+- **Distributed Tracing**: Full-stack instrumentation with OpenTelemetry (OTel), allowing request flows to be tracked through the REST and gRPC layers into Jaeger.
+- **Performance Metrics**: Real-time metrics collection via Prometheus, with visualization through Grafana dashboards.
+- **Fault Tolerance**: A Circuit Breaker pattern is implemented in the REST service to prevent cascading failures if the backend gRPC service or MongoDB becomes unavailable.
 
-&nbsp;
+## Architecture Stack
+- **Gateway**: Traefik v2.11
+- **Auth**: Keycloak 25.0
+- **Services**: FastAPI (REST), Python (gRPC)
+- **Monitoring**: Prometheus, Grafana, Jaeger, OpenTelemetry Collector, Portainer
+- **Database**: MongoDB
 
-# HOW TO RUN
-
-Simply `docker compose up -d`
-
-&nbsp;
-
-# USEFUL COMMANDS
-
-### **Portainer**
-
-`https://localhost:9443`
-
-### **Traefik**
-
-`http://localhost:8080`
-
-### **Keycloak**
-
-`http://localhost:8081`
-
-### **Create Token from Keycloak**
-
+## Getting Started
+### Deployment
+Run the entire stack using Docker Compose:
+```bash
+docker compose up -d
 ```
-curl -s -X POST \
 
-'http://localhost:8081/realms/dsa-lab/protocol/openid-connect/token' \
+### Key Endpoints
+- **REST API**: `https://localhost/api` (Root endpoint requires local CA certificate)
+- **Auth Service**: `http://localhost:8081` (Keycloak)
+- **Monitoring**: `https://localhost:9443` (Portainer)
+- **Metrics**: `http://localhost:3000` (Grafana)
+- **Tracing**: `http://localhost:16686` (Jaeger)
 
+## Security Verification
+The following highlights the results of the zero-trust implementation:
+- **Encrypted Communication**: Traffic captured between services is unreadable due to the mTLS encryption.
+- **Fail-Safe Authentication**: Requests without a valid JWT or with an expired token are rejected with a `401 Unauthorized` status.
+- **Lateral Movement Prevention**: Services only accept requests from verified identities within the mTLS network; external attempts to bypass the gateway are blocked.
+- **Circuit Breaker**: Requests to the API gracefully fail when backend services are down, preventing a system-wide freeze.
+
+## Usage Example
+### 1. Authenticate with Keycloak
+Fetch a JWT access token:
+```
+curl -s -X POST 'http://localhost:8081/realms/dsa-lab/protocol/openid-connect/token' \
 -d 'client_id=rest-client' \
-
 -d 'grant_type=password' \
-
 -d 'username=tvph1996' \
-
--d 'password=H.g.t.124' \
-
+-d 'password=admin' \
 | jq -r .access_token > token.jwt
 ```
 
-### **Add Item**
-
+### 2. Access the Secured API
+Use the token and the CA certificate to interact with the protected `/items` endpoint:
 ```
-curl -X POST \
-
+curl -X POST https://localhost/api/items \
 --cacert security/certs/ca.crt \
-
 -H "Authorization: Bearer $(cat token.jwt)" \
-
 -H "Content-Type: application/json" \
-
--d '{"id": 5, "name": "A Fifth Item"}' \
-
-https://localhost/api/items
-```
-
-### **Get Item**
-
-```
-curl --cacert security/certs/ca.crt \
-
--H "Authorization: Bearer $(cat token.jwt)" \
-
-https://localhost/api/items/?id=5
-```
-
-### **Create new key and crt**
-
-```
-openssl req -new -newkey rsa:2048 -nodes \
-
--keyout security/certs/rest-service.key -out security/certs/rest-service.csr \
-
--subj "/C=DE/O=FH-Anhalt/CN=rest-service"
-
-
-openssl x509 -req -in security/certs/rest-service.csr \
-
--CA security/certs/ca.crt -CAkey security/certs/ca.key -CAcreateserial \
-
--out security/certs/rest-service.crt -days 180
+-d '{"id": 1, "name": "Secure Item"}'
 ```
