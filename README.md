@@ -2,6 +2,15 @@
 
 This project implements a secure, observable microservices architecture using **Zero-Trust** principles. It demonstrates a complete pipeline for securing service-to-service communication, identity management, and distributed monitoring.
 
+<img width="788" height="570" alt="image" src="https://github.com/user-attachments/assets/533f87d4-8777-4585-8bc9-8764589da23e" />
+
+<img width="1280" height="640" alt="image" src="https://github.com/user-attachments/assets/3a8b8e7a-6884-4704-b1fa-52ce5f157938" />
+
+<img width="1648" height="578" alt="image" src="https://github.com/user-attachments/assets/8cfecab7-7e9a-4ac5-9cb1-8cff50e10172" />
+
+
+
+
 ## Technical Overview
 The system consists of a FastAPI REST gateway, a gRPC backend service, and a MongoDB database. Every connection is secured, and every request is traced across the stack.
 
